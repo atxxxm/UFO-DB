@@ -1,3 +1,6 @@
+![alt]([http://url/to/img.png](https://www.freevector.com/uploads/vector/preview/20288/ufo-03.jpg))
+
+
 # Документация библиотеки UFO DB
 
 Данная документация описывает класс `UFO_DB`, предназначенный для работы с базой данных, хранящейся в виде таблиц.
