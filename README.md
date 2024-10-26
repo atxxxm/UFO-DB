@@ -1,4 +1,4 @@
-![alt]([http://url/to/img.png](https://www.freevector.com/uploads/vector/preview/20288/ufo-03.jpg))
+![image](https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/Noto_Emoji_Pie_1f6f8.svg/1024px-Noto_Emoji_Pie_1f6f8.svg.png)
 
 
 # Документация библиотеки UFO DB
