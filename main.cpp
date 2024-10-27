@@ -7,6 +7,7 @@
 #include <sstream>
 #include <limits>
 #include <algorithm>
+#include <stdexcept>
 
 #include "UFOBase.h"
 
@@ -23,7 +24,7 @@ int getIntInput() {
     while (!(std::cin >> value)) {
         std::cin.clear();
         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-        std::cout << "Îøèáêà: Ââåäèòå öåëîå ÷èñëî: ";
+        std::cout << "ÐžÑˆÐ¸Ð±ÐºÐ°: Ð’Ð²ÐµÐ´Ð¸Ñ‚Ðµ Ñ†ÐµÐ»Ð¾Ðµ Ñ‡Ð¸ÑÐ»Ð¾: ";
     }
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     return value;
@@ -37,10 +38,10 @@ std::string getStringInput() {
 
 void printTables(const UFO_DB& db) {
     if (db.tables.empty()) {
-        std::cout << "Â áàçå äàííûõ íåò òàáëèö.\n";
+        std::cout << "Ð’ Ð±Ð°Ð·Ðµ Ð´Ð°Ð½Ð½Ñ‹Ñ… Ð½ÐµÑ‚ Ñ‚Ð°Ð±Ð»Ð¸Ñ†.\n";
         return;
     }
-    std::cout << "Òàáëèöû â áàçå äàííûõ:\n";
+    std::cout << "Ð¢Ð°Ð±Ð»Ð¸Ñ†Ñ‹ Ð² Ð±Ð°Ð·Ðµ Ð´Ð°Ð½Ð½Ñ‹Ñ…:\n";
     for (const auto& pair : db.tables) {
         std::cout << "- " << pair.first << "\n";
     }
@@ -48,163 +49,198 @@ void printTables(const UFO_DB& db) {
 
 void createTable(UFO_DB& db) {
     std::string tableName;
-    std::cout << "Ââåäèòå èìÿ òàáëèöû: ";
+    std::cout << "Ð’Ð²ÐµÐ´Ð¸Ñ‚Ðµ Ð¸Ð¼Ñ Ñ‚Ð°Ð±Ð»Ð¸Ñ†Ñ‹: ";
     tableName = getStringInput();
 
     int numColumns;
-    std::cout << "Ââåäèòå êîëè÷åñòâî ñòîëáöîâ: ";
+    std::cout << "Ð’Ð²ÐµÐ´Ð¸Ñ‚Ðµ ÐºÐ¾Ð»Ð¸Ñ‡ÐµÑÑ‚Ð²Ð¾ ÑÑ‚Ð¾Ð»Ð±Ñ†Ð¾Ð²: ";
     numColumns = getIntInput();
 
     std::vector<std::string> columns(numColumns);
     for (int i = 0; i < numColumns; ++i) {
-        std::cout << "Ââåäèòå èìÿ ñòîëáöà " << i + 1 << ": ";
+        std::cout << "Ð’Ð²ÐµÐ´Ð¸Ñ‚Ðµ Ð¸Ð¼Ñ ÑÑ‚Ð¾Ð»Ð±Ñ†Ð° " << i + 1 << ": ";
         columns[i] = getStringInput();
     }
 
-    db.createTable(tableName, columns);
-    std::cout << "Òàáëèöà \"" << tableName << "\" óñïåøíî ñîçäàíà.\n";
+    try {
+        db.createTable(tableName, columns);
+        std::cout << "Ð¢Ð°Ð±Ð»Ð¸Ñ†Ð° \"" << tableName << "\" ÑƒÑÐ¿ÐµÑˆÐ½Ð¾ ÑÐ¾Ð·Ð´Ð°Ð½Ð°.\n";
+    }
+    catch (const std::runtime_error& error) {
+        std::cerr << "ÐžÑˆÐ¸Ð±ÐºÐ°: " << error.what() << std::endl;
+    }
 }
 
 void selectTable(UFO_DB& db) {
     std::string tableName;
-    std::cout << "Ââåäèòå èìÿ òàáëèöû: ";
-    std::cin >> tableName;
-    db.setCurrentTable(tableName);
-    if (!db.currentTable.empty()) {
-        std::cout << "Âûáðàíà òàáëèöà \"" << tableName << "\".\n";
+    std::cout << "Ð’Ð²ÐµÐ´Ð¸Ñ‚Ðµ Ð¸Ð¼Ñ Ñ‚Ð°Ð±Ð»Ð¸Ñ†Ñ‹: ";
+    tableName = getStringInput();
+    try {
+        db.setCurrentTable(tableName);
+        std::cout << "Ð’Ñ‹Ð±Ñ€Ð°Ð½Ð° Ñ‚Ð°Ð±Ð»Ð¸Ñ†Ð° \"" << tableName << "\".\n";
+    }
+    catch (const std::runtime_error& error) {
+        std::cerr << "ÐžÑˆÐ¸Ð±ÐºÐ°: " << error.what() << std::endl;
     }
 }
 
 void addRecord(UFO_DB& db) {
     if (db.currentTable.empty()) {
-        std::cerr << "Îøèáêà: Òåêóùàÿ òàáëèöà íå âûáðàíà.\n";
+        std::cerr << "ÐžÑˆÐ¸Ð±ÐºÐ°: Ð¢ÐµÐºÑƒÑ‰Ð°Ñ Ñ‚Ð°Ð±Ð»Ð¸Ñ†Ð° Ð½Ðµ Ð²Ñ‹Ð±Ñ€Ð°Ð½Ð°.\n";
         return;
     }
-    std::string format, data;
 
-    std::cout << "Ââåäèòå ôîðìàò äàííûõ (íàïðèìåð, $Èìÿ$Âîçðàñò): ";
-    format = getStringInput();
+    std::cout << "Ð’Ð²ÐµÐ´Ð¸Ñ‚Ðµ Ð´Ð°Ð½Ð½Ñ‹Ðµ, Ñ€Ð°Ð·Ð´ÐµÐ»ÐµÐ½Ð½Ñ‹Ðµ Ð·Ð°Ð¿ÑÑ‚Ñ‹Ð¼Ð¸ (Ð½Ð°Ð¿Ñ€Ð¸Ð¼ÐµÑ€, Ð˜Ð²Ð°Ð½,30): ";
+    std::string dataLine = getStringInput();
 
-    std::cout << "Ââåäèòå äàííûå (íàïðèìåð, Èâàí,30): ";
-    data = getStringInput();
+    std::stringstream ss(dataLine);
+    std::string item;
+    std::vector<std::string> data;
+    while (std::getline(ss, item, ',')) {
+        data.push_back(item);
+    }
 
-    db.addData(format, data);
+    try {
+        db.addData(db.currentTable, data);
+        std::cout << "Ð—Ð°Ð¿Ð¸ÑÑŒ ÑƒÑÐ¿ÐµÑˆÐ½Ð¾ Ð´Ð¾Ð±Ð°Ð²Ð»ÐµÐ½Ð°.\n";
+    }
+    catch (const std::runtime_error& error) {
+        std::cerr << "ÐžÑˆÐ¸Ð±ÐºÐ°: " << error.what() << std::endl;
+    }
 }
-
 
 void printRecords(UFO_DB& db) {
     std::string tableName;
-    std::cout << "Ââåäèòå èìÿ òàáëèöû: ";
-    std::cin >> tableName;
+    std::cout << "Ð’Ð²ÐµÐ´Ð¸Ñ‚Ðµ Ð¸Ð¼Ñ Ñ‚Ð°Ð±Ð»Ð¸Ñ†Ñ‹: ";
+    tableName = getStringInput();
 
-    db.select(tableName);
+    try {
+        db.select(tableName);
+    }
+    catch (const std::runtime_error& error) {
+        std::cerr << "ÐžÑˆÐ¸Ð±ÐºÐ°: " << error.what() << std::endl;
+    }
 }
 
 void updateRecord(UFO_DB& db) {
     std::string tableName;
-    std::cout << "Ââåäèòå èìÿ òàáëèöû: ";
-    std::cin >> tableName;
+    std::cout << "Ð’Ð²ÐµÐ´Ð¸Ñ‚Ðµ Ð¸Ð¼Ñ Ñ‚Ð°Ð±Ð»Ð¸Ñ†Ñ‹: ";
+    tableName = getStringInput();
 
     int id;
-    std::cout << "Ââåäèòå id çàïèñè äëÿ îáíîâëåíèÿ: ";
+    std::cout << "Ð’Ð²ÐµÐ´Ð¸Ñ‚Ðµ id Ð·Ð°Ð¿Ð¸ÑÐ¸ Ð´Ð»Ñ Ð¾Ð±Ð½Ð¾Ð²Ð»ÐµÐ½Ð¸Ñ: ";
     id = getIntInput();
 
     int numUpdates;
-    std::cout << "Ââåäèòå êîëè÷åñòâî ïîëåé äëÿ îáíîâëåíèÿ: ";
+    std::cout << "Ð’Ð²ÐµÐ´Ð¸Ñ‚Ðµ ÐºÐ¾Ð»Ð¸Ñ‡ÐµÑÑ‚Ð²Ð¾ Ð¿Ð¾Ð»ÐµÐ¹ Ð´Ð»Ñ Ð¾Ð±Ð½Ð¾Ð²Ð»ÐµÐ½Ð¸Ñ: ";
     numUpdates = getIntInput();
-
 
     std::unordered_map<std::string, std::string> updates;
     for (int i = 0; i < numUpdates; ++i) {
         std::string fieldName, fieldValue;
-        std::cout << "Ââåäèòå èìÿ ïîëÿ: ";
+        std::cout << "Ð’Ð²ÐµÐ´Ð¸Ñ‚Ðµ Ð¸Ð¼Ñ Ð¿Ð¾Ð»Ñ: ";
         fieldName = getStringInput();
-        std::cout << "Ââåäèòå çíà÷åíèå: ";
+        std::cout << "Ð’Ð²ÐµÐ´Ð¸Ñ‚Ðµ Ð·Ð½Ð°Ñ‡ÐµÐ½Ð¸Ðµ: ";
         fieldValue = getStringInput();
-
         updates[fieldName] = fieldValue;
     }
 
-    db.update(tableName, id, updates);
+    try {
+        db.update(tableName, id, updates);
+        std::cout << "Ð—Ð°Ð¿Ð¸ÑÑŒ ÑƒÑÐ¿ÐµÑˆÐ½Ð¾ Ð¾Ð±Ð½Ð¾Ð²Ð»ÐµÐ½Ð°.\n";
+    }
+    catch (const std::runtime_error& error) {
+        std::cerr << "ÐžÑˆÐ¸Ð±ÐºÐ°: " << error.what() << std::endl;
+    }
 }
 
+void deleteRecord(UFO_DB& db) {
+    std::string tableName;
+    std::cout << "Ð’Ð²ÐµÐ´Ð¸Ñ‚Ðµ Ð¸Ð¼Ñ Ñ‚Ð°Ð±Ð»Ð¸Ñ†Ñ‹: ";
+    tableName = getStringInput();
+
+    int id;
+    std::cout << "Ð’Ð²ÐµÐ´Ð¸Ñ‚Ðµ ID Ð·Ð°Ð¿Ð¸ÑÐ¸ Ð´Ð»Ñ ÑƒÐ´Ð°Ð»ÐµÐ½Ð¸Ñ: ";
+    id = getIntInput();
+
+    try {
+        if (db.deleteRecordFromTable(tableName, id)) {
+            std::cout << "Ð—Ð°Ð¿Ð¸ÑÑŒ Ñ ID " << id << " ÑƒÑÐ¿ÐµÑˆÐ½Ð¾ ÑƒÐ´Ð°Ð»ÐµÐ½Ð° Ð¸Ð· Ñ‚Ð°Ð±Ð»Ð¸Ñ†Ñ‹ " << tableName << std::endl;
+        }
+        else {
+            std::cerr << "ÐžÑˆÐ¸Ð±ÐºÐ°: Ð—Ð°Ð¿Ð¸ÑÑŒ Ñ ID " << id << " Ð½Ðµ Ð½Ð°Ð¹Ð´ÐµÐ½Ð° Ð² Ñ‚Ð°Ð±Ð»Ð¸Ñ†Ðµ " << tableName << std::endl;
+        }
+    }
+    catch (const std::runtime_error& error) {
+        std::cerr << "ÐžÑˆÐ¸Ð±ÐºÐ°: " << error.what() << std::endl;
+    }
+}
 
 void saveToFile(UFO_DB& db) {
     std::string filename;
-    std::cout << "Ââåäèòå èìÿ ôàéëà äëÿ ñîõðàíåíèÿ: ";
-    std::cin >> filename;
-    if (db.saveToFile(filename)) {
-        std::cout << "Äàííûå ñîõðàíåíû â ôàéë " << filename << std::endl;
+    std::cout << "Ð’Ð²ÐµÐ´Ð¸Ñ‚Ðµ Ð¸Ð¼Ñ Ñ„Ð°Ð¹Ð»Ð° Ð´Ð»Ñ ÑÐ¾Ñ…Ñ€Ð°Ð½ÐµÐ½Ð¸Ñ: ";
+    filename = getStringInput(); 
+
+    try {
+        if (db.saveToFile(filename)) {
+            std::cout << "Ð”Ð°Ð½Ð½Ñ‹Ðµ ÑÐ¾Ñ…Ñ€Ð°Ð½ÐµÐ½Ñ‹ Ð² Ñ„Ð°Ð¹Ð» " << filename << std::endl;
+        }
+    }
+    catch (const std::runtime_error& error) {
+        std::cerr << "ÐžÑˆÐ¸Ð±ÐºÐ° Ð¿Ñ€Ð¸ ÑÐ¾Ñ…Ñ€Ð°Ð½ÐµÐ½Ð¸Ð¸: " << error.what() << std::endl;
     }
 }
 
 
 void loadFromFile(UFO_DB& db) {
     std::string filename;
-    std::cout << "Ââåäèòå èìÿ ôàéëà äëÿ çàãðóçêè: ";
-    std::cin >> filename;
-    if (db.loadFromFile(filename)) {
-        std::cout << "Äàííûå çàãðóæåíû èç ôàéëà " << filename << std::endl;
+    std::cout << "Ð’Ð²ÐµÐ´Ð¸Ñ‚Ðµ Ð¸Ð¼Ñ Ñ„Ð°Ð¹Ð»Ð° Ð´Ð»Ñ Ð·Ð°Ð³Ñ€ÑƒÐ·ÐºÐ¸: ";
+    filename = getStringInput(); 
+
+    try {
+        if (db.loadFromFile(filename)) {
+            std::cout << "Ð”Ð°Ð½Ð½Ñ‹Ðµ Ð·Ð°Ð³Ñ€ÑƒÐ¶ÐµÐ½Ñ‹ Ð¸Ð· Ñ„Ð°Ð¹Ð»Ð° " << filename << std::endl;
+        }
+    }
+    catch (const std::runtime_error& error) {
+        std::cerr << "ÐžÑˆÐ¸Ð±ÐºÐ° Ð¿Ñ€Ð¸ Ð·Ð°Ð³Ñ€ÑƒÐ·ÐºÐµ: " << error.what() << std::endl;
     }
 }
 
-
-
-
-
 int main() {
     setlocale(LC_ALL, "rus");
-
     UFO_DB db;
-
 
     while (true) {
         clearScreen();
-        std::cout << "Âûáåðèòå äåéñòâèå:\n";
-        std::cout << "1. Ñîçäàòü òàáëèöó\n";
-        std::cout << "2. Âûáðàòü òàáëèöó\n";
-        std::cout << "3. Äîáàâèòü çàïèñü\n";
-        std::cout << "4. Âûâåñòè âñå çàïèñè\n";
-        std::cout << "5. Îáíîâèòü çàïèñü\n";
-        std::cout << "6. Ñîõðàíèòü â ôàéë\n";
-        std::cout << "7. Çàãðóçèòü èç ôàéëà\n";
-        std::cout << "8. Âûâåñòè ñïèñîê òàáëèö\n";
-        std::cout << "9. Âûõîä\n";
-
+        std::cout << "Ð’Ñ‹Ð±ÐµÑ€Ð¸Ñ‚Ðµ Ð´ÐµÐ¹ÑÑ‚Ð²Ð¸Ðµ:\n";
+        std::cout << "1. Ð¡Ð¾Ð·Ð´Ð°Ñ‚ÑŒ Ñ‚Ð°Ð±Ð»Ð¸Ñ†Ñƒ\n";
+        std::cout << "2. Ð’Ñ‹Ð±Ñ€Ð°Ñ‚ÑŒ Ñ‚Ð°Ð±Ð»Ð¸Ñ†Ñƒ\n";
+        std::cout << "3. Ð”Ð¾Ð±Ð°Ð²Ð¸Ñ‚ÑŒ Ð·Ð°Ð¿Ð¸ÑÑŒ\n";
+        std::cout << "4. Ð’Ñ‹Ð²ÐµÑÑ‚Ð¸ Ð²ÑÐµ Ð·Ð°Ð¿Ð¸ÑÐ¸\n";
+        std::cout << "5. ÐžÐ±Ð½Ð¾Ð²Ð¸Ñ‚ÑŒ Ð·Ð°Ð¿Ð¸ÑÑŒ\n";
+        std::cout << "6. Ð£Ð´Ð°Ð»Ð¸Ñ‚ÑŒ Ð·Ð°Ð¿Ð¸ÑÑŒ\n"; 
+        std::cout << "7. Ð¡Ð¾Ñ…Ñ€Ð°Ð½Ð¸Ñ‚ÑŒ Ð² Ñ„Ð°Ð¹Ð»\n";
+        std::cout << "8. Ð—Ð°Ð³Ñ€ÑƒÐ·Ð¸Ñ‚ÑŒ Ð¸Ð· Ñ„Ð°Ð¹Ð»Ð°\n";
+        std::cout << "9. Ð’Ñ‹Ð²ÐµÑÑ‚Ð¸ ÑÐ¿Ð¸ÑÐ¾Ðº Ñ‚Ð°Ð±Ð»Ð¸Ñ†\n";
+        std::cout << "0. Ð’Ñ‹Ñ…Ð¾Ð´\n";
 
         int choice = getIntInput();
 
         switch (choice) {
-        case 1:
-            createTable(db);
-            break;
-        case 2:
-            selectTable(db);
-            break;
-        case 3:
-            addRecord(db);
-            break;
-        case 4:
-            printRecords(db);
-            break;
-        case 5:
-            updateRecord(db);
-            break;
-        case 6:
-            saveToFile(db);
-            break;
-        case 7:
-            loadFromFile(db);
-            break;
-        case 8:
-            printTables(db);
-            break;
-        case 9:
-            return 0;
-        default:
-            std::cerr << "Îøèáêà: Íåâåðíûé âûáîð." << std::endl;
+        case 1: createTable(db); break;
+        case 2: selectTable(db); break;
+        case 3: addRecord(db); break;
+        case 4: printRecords(db); break;
+        case 5: updateRecord(db); break;
+        case 6: deleteRecord(db); break; 
+        case 7: saveToFile(db); break;
+        case 8: loadFromFile(db); break;
+        case 9: printTables(db); break;
+        case 0: return 0;
+        default: std::cerr << "ÐžÑˆÐ¸Ð±ÐºÐ°: ÐÐµÐ²ÐµÑ€Ð½Ñ‹Ð¹ Ð²Ñ‹Ð±Ð¾Ñ€.\n";
         }
-        system("pause");
+        std::cin.get();
     }
 
     return 0;
