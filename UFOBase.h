@@ -10,211 +10,206 @@
 #include <sstream>
 #include <fstream> 
 
-class UFORecords 
-{
+
+class UFORecords {
 public:
     std::unordered_map<std::string, std::string> fields;
 
-    void add(const std::initializer_list<std::pair<std::string, std::string>>& pairs) 
-    {
-        for (const auto& pair : pairs) {
-            fields[pair.first] = pair.second;
-        }
+    void add(const std::string& fieldName, const std::string& value) {
+        fields[fieldName] = value;
     }
 
-    std::string getField(const std::string& fieldName) const 
-    {
+    std::string getField(const std::string& fieldName) const {
         auto it = fields.find(fieldName);
-        return it != fields.end() ? it->second : "";
+        return (it != fields.end()) ? it->second : "";
     }
-
 };
 
-class UFOTable 
-{
+class UFOTable {
 public:
     std::string name;
     std::vector<std::string> columns;
     std::vector<UFORecords> records;
-    int ID = 1; 
+    int nextID = 1;
 
-    UFOTable() : name(""), columns() {}
+    UFOTable() : name(""), nextID(1) {}
 
-    UFOTable(const std::string& name, const std::vector<std::string>& columns)
-        : name(name), columns(columns) {}
+    UFOTable(const std::string& tableName, const std::vector<std::string>& cols) : name(tableName), columns(cols) {}
 
-    void insertRecord(UFORecords record) 
-    {
-        record.add({ {"id", std::to_string(ID)} });
-        records.push_back(record);
-        ID++;
+    void insertRecord(const UFORecords& record) {
+        UFORecords newRecord = record;
+        newRecord.add("id", std::to_string(nextID++));
+        records.push_back(newRecord);
     }
 
-    void selectAll() const 
-    {
-        // «‡„ÓÎÓ‚ÓÍ
-        std::cout << "|" << std::left << std::setw(10) << "id";
-        for (const auto& column : columns) {
-            std::cout << "|" << std::left << std::setw(10) << column;
+    void selectAll() const {
+        printHeader();
+        for (const auto& record : records) {
+            printRecord(record);
         }
-        std::cout << "|\n";
+    }
 
-        // –‡Á‰ÂÎËÚÂÎ¸
-        std::cout << std::string(10 + columns.size() * 11, '-') << "\n"; 
-
-        // «‡ÔËÒË
-        for (const auto& record : records) 
-        {
-            std::cout << "|" << std::left << std::setw(10) << record.getField("id"); 
-            for (const auto& column : columns) {
-                std::cout << "|" << std::left << std::setw(10) << record.getField(column); 
-            }
-            std::cout << "|\n";
-        }
+    std::vector<UFORecords> selectWhere(const std::string& fieldName, const std::string& value) const {
+        std::vector<UFORecords> results;
+        std::copy_if(records.begin(), records.end(), std::back_inserter(results),
+            [&](const UFORecords& record) { return record.getField(fieldName) == value; });
+        return results;
     }
 
     void updateRecord(int id, const std::unordered_map<std::string, std::string>& updates) {
-        for (auto& record : records) {
-            if (record.getField("id") == std::to_string(id)) {
-                for (const auto& pair : updates) {
-                    record.fields[pair.first] = pair.second;
-                }
-                return;
+        auto it = std::find_if(records.begin(), records.end(),
+            [&](const UFORecords& record) { return record.getField("id") == std::to_string(id); });
+
+        if (it != records.end()) {
+            for (const auto& update : updates) {
+                it->fields[update.first] = update.second;
             }
         }
-        std::cerr << "Œ¯Ë·Í‡: Á‡ÔËÒ¸ Ò id " << id << " ÌÂ Ì‡È‰ÂÌ‡." << std::endl;
+        else {
+            throw std::runtime_error("–ó–∞–ø–∏—Å—å —Å id " + std::to_string(id) + " –Ω–µ –Ω–∞–π–¥–µ–Ω–∞.");
+        }
+    }
+
+
+    bool deleteRecord(int id) {
+        auto it = std::remove_if(records.begin(), records.end(),
+            [&](const UFORecords& record) { return record.getField("id") == std::to_string(id); });
+        if (it != records.end()) {
+            records.erase(it, records.end());
+            return true;
+        }
+        return false;
+    }
+
+private:
+
+    void printHeader() const {
+        std::cout << "| " << std::left << std::setw(10) << "id";
+        for (const auto& col : columns) {
+            std::cout << " | " << std::left << std::setw(10) << col;
+        }
+        std::cout << " |\n";
+        std::cout << std::string(13 + columns.size() * 13, '-') << "\n";
+    }
+
+    void printRecord(const UFORecords& record) const {
+        std::cout << "| " << std::left << std::setw(10) << record.getField("id");
+        for (const auto& col : columns) {
+            std::cout << " | " << std::left << std::setw(10) << record.getField(col);
+        }
+        std::cout << " |\n";
     }
 };
 
-class UFO_DB
-{
+
+class UFO_DB {
 public:
     std::unordered_map<std::string, UFOTable> tables;
     std::string currentTable;
 
-    void createTable(const std::string& name, const std::vector<std::string>& columns) 
-    {
+    void createTable(const std::string& name, const std::vector<std::string>& columns) {
+        if (tables.count(name)) {
+            throw std::runtime_error("–¢–∞–±–ª–∏—Ü–∞ —Å –∏–º–µ–Ω–µ–º " + name + " —É–∂–µ —Å—É—â–µ—Å—Ç–≤—É–µ—Ç.");
+        }
         tables[name] = UFOTable(name, columns);
     }
 
-    void setCurrentTable(const std::string& tableName) 
-    {
+    void setCurrentTable(const std::string& tableName) {
+        if (!tables.count(tableName)) {
+            throw std::runtime_error("–¢–∞–±–ª–∏—Ü–∞ —Å –∏–º–µ–Ω–µ–º " + tableName + " –Ω–µ —Å—É—â–µ—Å—Ç–≤—É–µ—Ç.");
+        }
         currentTable = tableName;
     }
 
-    void insert(const std::string& TableName, const UFORecords& record)
-    {
-        tables[TableName].insertRecord(record);
+    void insert(const std::string& tableName, const UFORecords& record) {
+        if (!tables.count(tableName)) {
+            throw std::runtime_error("–¢–∞–±–ª–∏—Ü–∞ —Å –∏–º–µ–Ω–µ–º " + tableName + " –Ω–µ —Å—É—â–µ—Å—Ç–≤—É–µ—Ç.");
+        }
+        tables[tableName].insertRecord(record);
     }
 
-    void select(const std::string& tableName) 
-    {
-        tables[tableName].selectAll();
+
+    void select(const std::string& tableName) const {
+        if (!tables.count(tableName)) {
+            throw std::runtime_error("–¢–∞–±–ª–∏—Ü–∞ —Å –∏–º–µ–Ω–µ–º " + tableName + " –Ω–µ —Å—É—â–µ—Å—Ç–≤—É–µ—Ç.");
+        }
+        tables.at(tableName).selectAll();
     }
 
-    void addData(const std::string& format, const std::string& data) 
-    {
-        if (currentTable.empty()) 
-        {
-            std::cerr << "Œ¯Ë·Í‡: “ÂÍÛ˘‡ˇ Ú‡·ÎËˆ‡ ÌÂ Ì‡È‰ÂÌ‡." << std::endl;
-            return;
-        }
 
-        std::vector<std::string> formatParts;
-        std::stringstream formatStream(format);
-        std::string part;
-        while (std::getline(formatStream, part, '$')) {
-            if (!part.empty()) {
-                formatParts.push_back(part);
-            }
-        }
-
-
-        std::vector<std::string> dataParts;
-        std::stringstream dataStream(data);
-        std::string dataPart;
-        while (std::getline(dataStream, dataPart, ',')) 
-        { 
-            dataParts.push_back(dataPart);
+    void addData(const std::string& tableName, const std::vector<std::string>& data) {
+        if (!tables.count(tableName)) {
+            throw std::runtime_error("–¢–∞–±–ª–∏—Ü–∞ —Å –∏–º–µ–Ω–µ–º " + tableName + " –Ω–µ —Å—É—â–µ—Å—Ç–≤—É–µ—Ç.");
 
         }
-
-        if (formatParts.size() != dataParts.size()) 
-        {
-            std::cerr << "Œ¯Ë·Í‡: ÍÓÎË˜ÂÒÚ‚Ó Ô‡‡ÏÂÚÓ‚ ÙÓÏ‡Ú‡ Ë ‰‡ÌÌ˚ı ÌÂ ÒÓ‚Ô‡‰‡ÂÚ." << std::endl;
-            return;
+        if (data.size() != tables.at(tableName).columns.size()) {
+            throw std::runtime_error("–ù–µ–≤–µ—Ä–Ω–æ–µ –∫–æ–ª–∏—á–µ—Å—Ç–≤–æ –¥–∞–Ω–Ω—ã—Ö –¥–ª—è —Ç–∞–±–ª–∏—Ü—ã " + tableName);
         }
 
         UFORecords record;
-        for (size_t i = 0; i < formatParts.size(); ++i) {
-            std::string fieldName = formatParts[i];
-            std::string fieldValue = dataParts[i];
-
-            fieldName = fieldName.substr(fieldName.find_first_not_of(" ")); 
-            fieldName = fieldName.substr(0, fieldName.find_last_not_of(" ") + 1);  
-            fieldValue = fieldValue.substr(fieldValue.find_first_not_of(" "));
-
-            record.add({ {fieldName, fieldValue} });
-
+        for (size_t i = 0; i < tables.at(tableName).columns.size(); ++i) {
+            record.add(tables.at(tableName).columns[i], data[i]);
         }
+        tables.at(tableName).insertRecord(record);
 
-
-        insert(currentTable, record);
     }
+
 
     void update(const std::string& tableName, int id, const std::unordered_map<std::string, std::string>& updates) {
-        if (tables.find(tableName) == tables.end()) {
-            std::cerr << "Œ¯Ë·Í‡: Ú‡·ÎËˆ‡ " << tableName << " ÌÂ Ì‡È‰ÂÌ‡." << std::endl;
-            return;
+        if (!tables.count(tableName)) {
+            throw std::runtime_error("–¢–∞–±–ª–∏—Ü–∞ —Å –∏–º–µ–Ω–µ–º " + tableName + " –Ω–µ —Å—É—â–µ—Å—Ç–≤—É–µ—Ç.");
         }
-        tables[tableName].updateRecord(id, updates);
+        tables.at(tableName).updateRecord(id, updates);
     }
+
+
+    bool deleteRecordFromTable(const std::string& tableName, int id) {
+        if (!tables.count(tableName)) {
+            return false; // –ò–ª–∏ –±—Ä–æ—Å–∏—Ç—å –∏—Å–∫–ª—é—á–µ–Ω–∏–µ
+        }
+        return tables.at(tableName).deleteRecord(id);
+    }
+
 
     bool saveToFile(const std::string& filename) const {
         std::ofstream outfile(filename);
         if (!outfile.is_open()) {
-            std::cerr << "Œ¯Ë·Í‡: ÕÂ Û‰‡ÎÓÒ¸ ÓÚÍ˚Ú¸ Ù‡ÈÎ ‰Îˇ Á‡ÔËÒË." << std::endl;
-            return false;
+            throw std::runtime_error("–ù–µ —É–¥–∞–ª–æ—Å—å –æ—Ç–∫—Ä—ã—Ç—å —Ñ–∞–π–ª –¥–ª—è –∑–∞–ø–∏—Å–∏."); // –ò—Å–∫–ª—é—á–µ–Ω–∏—è –≤–º–µ—Å—Ç–æ std::cerr
         }
 
         outfile << tables.size() << '\n';
-
         for (const auto& pair : tables) {
             const UFOTable& table = pair.second;
             outfile << table.name << '\n';
             outfile << table.columns.size() << '\n';
-
             for (const auto& col : table.columns) {
                 outfile << col << '\n';
             }
-
-            outfile << table.ID << '\n'; 
+            outfile << table.nextID << '\n'; // nextID, –∞ –Ω–µ ID
             outfile << table.records.size() << '\n';
-
             for (const auto& record : table.records) {
                 for (const auto& col : table.columns) {
                     outfile << record.getField(col) << "|";
                 }
-                outfile << record.getField("id") << '\n'; 
+                outfile << record.getField("id") << '\n';
             }
         }
-
-        outfile.close(); 
-        return true;
+        return true; // –í–æ–∑–≤—Ä–∞—â–∞–µ–º true –≤ —Å–ª—É—á–∞–µ —É—Å–ø–µ—Ö–∞
     }
+
 
     bool loadFromFile(const std::string& filename) {
         std::ifstream infile(filename);
         if (!infile.is_open()) {
-            std::cerr << "Œ¯Ë·Í‡: ÕÂ Û‰‡ÎÓÒ¸ ÓÚÍ˚Ú¸ Ù‡ÈÎ ‰Îˇ ˜ÚÂÌËˇ." << std::endl;
-            return false;
+            throw std::runtime_error("–ù–µ —É–¥–∞–ª–æ—Å—å –æ—Ç–∫—Ä—ã—Ç—å —Ñ–∞–π–ª –¥–ª—è —á—Ç–µ–Ω–∏—è.");
         }
 
-        tables.clear(); 
+        tables.clear();
 
         int numTables;
         infile >> numTables;
-        infile.ignore(); 
+        infile.ignore();
+
 
         for (int i = 0; i < numTables; ++i) {
             std::string tableName;
@@ -224,18 +219,19 @@ public:
             infile >> numColumns;
             infile.ignore();
 
-            std::vector<std::string> columns;
+            std::vector<std::string> columns(numColumns);
             for (int j = 0; j < numColumns; ++j) {
-                std::string column;
-                std::getline(infile, column);
-                columns.push_back(column);
+                std::getline(infile, columns[j]);
             }
 
             createTable(tableName, columns);
-            int id_value;
-            infile >> id_value;
+
+
+            int nextID;
+            infile >> nextID;
             infile.ignore();
-            tables[tableName].ID = id_value;
+            tables[tableName].nextID = nextID;
+
 
 
             int numRecords;
@@ -244,27 +240,25 @@ public:
 
             for (int k = 0; k < numRecords; ++k) {
                 UFORecords record;
-                for (size_t c = 0; c < columns.size(); ++c) {
-                    std::string value;
-                    std::getline(infile, value);
+                std::string line;
+                std::getline(infile, line);
+                std::stringstream ss(line);
+                std::string value;
 
-                    record.add({ {columns[c], value } });
+                for (size_t c = 0; c < columns.size(); ++c) {
+                    std::getline(ss, value, '|');
+                    record.add(columns[c], value);
 
                 }
-                std::string value;
-                std::getline(infile, value);
-
-                record.add({ {"id", value } });
+                std::getline(ss, value, '|');
+                record.add("id", value);
                 insert(tableName, record);
             }
         }
-
-        infile.close();
         return true;
     }
 
-    
+
 
 };
-
 #endif // !UFO_DATA_BASE_H
