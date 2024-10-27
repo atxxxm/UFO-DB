@@ -107,224 +107,49 @@ db.select("Products"); // Выводит таблицу
 
 ```
 
+# Изменения:
 
-## Код для удобного пользования UFO DB
-```C++
-#include <iostream>
-#include <string>
-#include <vector>
-#include <unordered_map>
-#include <iomanip>
-#include <fstream>
-#include <sstream>
-#include <limits>
-#include <algorithm>
+## Класс UFORecords:
 
-#include "UFOBase.h"
+Метод add изменен. Вместо приема списка пар std::initializer_list<std::pair<std::string, std::string>> он теперь принимает два отдельных аргумента: const std::string& fieldName, const std::string& value. Это упрощает добавление полей.
 
-void clearScreen() {
-#ifdef _WIN32
-    system("cls");
-#else
-    system("clear");
-#endif
-}
+## Класс UFOTable:
 
-int getIntInput() {
-    int value;
-    while (!(std::cin >> value)) {
-        std::cin.clear();
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-        std::cout << "Ошибка: Введите целое число: ";
-    }
-    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-    return value;
-}
+Переменная ID переименована в nextID. Это более точно отражает её назначение — хранение следующего доступного ID.
 
-std::string getStringInput() {
-    std::string line;
-    std::getline(std::cin, line);
-    return line;
-}
+Конструктор по умолчанию теперь инициализирует nextID значением 1.
 
-void printTables(const UFO_DB& db) {
-    if (db.tables.empty()) {
-        std::cout << "В базе данных нет таблиц.\n";
-        return;
-    }
-    std::cout << "Таблицы в базе данных:\n";
-    for (const auto& pair : db.tables) {
-        std::cout << "- " << pair.first << "\n";
-    }
-}
+Метод insertRecord модифицирован. Теперь он создает копию переданной записи record, добавляет к ней поле "id" и только потом добавляет её в вектор records. Это предотвращает изменение исходной записи вне функции.
 
-void createTable(UFO_DB& db) {
-    std::string tableName;
-    std::cout << "Введите имя таблицы: ";
-    tableName = getStringInput();
+Добавлен новый метод selectWhere, который позволяет выбирать записи, удовлетворяющие определенному условию (по заданному полю и значению). Он возвращает вектор UFORecords, содержащий выбранные записи.
 
-    int numColumns;
-    std::cout << "Введите количество столбцов: ";
-    numColumns = getIntInput();
+Метод updateRecord модифицирован для использования std::find_if для поиска записи по ID и обработки случая, когда запись не найдена, выбрасывая исключение std::runtime_error.
 
-    std::vector<std::string> columns(numColumns);
-    for (int i = 0; i < numColumns; ++i) {
-        std::cout << "Введите имя столбца " << i + 1 << ": ";
-        columns[i] = getStringInput();
-    }
+Добавлен метод deleteRecord, который удаляет запись по ID. Он возвращает true, если запись была удалена, и false в противном случае.
 
-    db.createTable(tableName, columns);
-    std::cout << "Таблица \"" << tableName << "\" успешно создана.\n";
-}
+Метод selectAll переписан. Логика вывода заголовка таблицы и самих записей вынесена в отдельные приватные методы printHeader и printRecord, что улучшает читаемость и структуру кода. Форматирование вывода тоже немного изменено.
 
-void selectTable(UFO_DB& db) {
-    std::string tableName;
-    std::cout << "Введите имя таблицы: ";
-    std::cin >> tableName;
-    db.setCurrentTable(tableName);
-    if (!db.currentTable.empty()) {
-        std::cout << "Выбрана таблица \"" << tableName << "\".\n";
-    }
-}
+## Класс UFO_DB:
 
-void addRecord(UFO_DB& db) {
-    if (db.currentTable.empty()) {
-        std::cerr << "Ошибка: Текущая таблица не выбрана.\n";
-        return;
-    }
-    std::string format, data;
+Метод addData существенно изменен. Он теперь принимает имя таблицы и вектор строк std::vector<std::string> в качестве данных, вместо строки формата и строки данных. Это упрощает использование и делает обработку данных более надежной. Проверка на соответствие количества данных количеству столбцов выполняется с помощью tables.at(tableName).columns.size().
 
-    std::cout << "Введите формат данных (например, $Имя$Возраст): ";
-    format = getStringInput();
+Добавлен метод deleteRecordFromTable для удаления записи из конкретной таблицы.
 
-    std::cout << "Введите данные (например, Иван,30): ";
-    data = getStringInput();
+Обработка ошибок улучшена. Вместо вывода сообщений в std::cerr, большинство методов теперь бросают исключения std::runtime_error для более эффективной обработки ошибок.
 
-    db.addData(format, data);
-}
+Метод createTable теперь проверяет, существует ли уже таблица с таким именем, и бросает исключение std::runtime_error, если существует.
 
+Метод setCurrentTable теперь проверяет существование таблицы и бросает исключение, если её нет.
 
-void printRecords(UFO_DB& db) {
-    std::string tableName;
-    std::cout << "Введите имя таблицы: ";
-    std::cin >> tableName;
+Метод insert теперь проверяет существование таблицы и бросает исключение, если её нет.
 
-    db.select(tableName);
-}
+Метод select теперь константный (const) и использует tables.at() для доступа к таблицам, что делает код немного безопаснее.
 
-void updateRecord(UFO_DB& db) {
-    std::string tableName;
-    std::cout << "Введите имя таблицы: ";
-    std::cin >> tableName;
+Метод update теперь использует tables.at() для доступа к таблицам, что делает код немного безопаснее и обрабатывает исключения.
 
-    int id;
-    std::cout << "Введите id записи для обновления: ";
-    id = getIntInput();
+В методе saveToFile, ID заменён на nextID. Выходные сообщения об ошибках заменены на исключения std::runtime_error. Метод теперь возвращает true в случае успешного сохранения.
 
-    int numUpdates;
-    std::cout << "Введите количество полей для обновления: ";
-    numUpdates = getIntInput();
-
-
-    std::unordered_map<std::string, std::string> updates;
-    for (int i = 0; i < numUpdates; ++i) {
-        std::string fieldName, fieldValue;
-        std::cout << "Введите имя поля: ";
-        fieldName = getStringInput();
-        std::cout << "Введите значение: ";
-        fieldValue = getStringInput();
-
-        updates[fieldName] = fieldValue;
-    }
-
-    db.update(tableName, id, updates);
-}
-
-
-void saveToFile(UFO_DB& db) {
-    std::string filename;
-    std::cout << "Введите имя файла для сохранения: ";
-    std::cin >> filename;
-    if (db.saveToFile(filename)) {
-        std::cout << "Данные сохранены в файл " << filename << std::endl;
-    }
-}
-
-
-void loadFromFile(UFO_DB& db) {
-    std::string filename;
-    std::cout << "Введите имя файла для загрузки: ";
-    std::cin >> filename;
-    if (db.loadFromFile(filename)) {
-        std::cout << "Данные загружены из файла " << filename << std::endl;
-    }
-}
-
-
-
-
-
-int main() {
-    setlocale(LC_ALL, "rus");
-
-    UFO_DB db;
-
-
-    while (true) {
-        clearScreen();
-        std::cout << "Выберите действие:\n";
-        std::cout << "1. Создать таблицу\n";
-        std::cout << "2. Выбрать таблицу\n";
-        std::cout << "3. Добавить запись\n";
-        std::cout << "4. Вывести все записи\n";
-        std::cout << "5. Обновить запись\n";
-        std::cout << "6. Сохранить в файл\n";
-        std::cout << "7. Загрузить из файла\n";
-        std::cout << "8. Вывести список таблиц\n";
-        std::cout << "9. Выход\n";
-
-
-        int choice = getIntInput();
-
-        switch (choice) {
-        case 1:
-            createTable(db);
-            break;
-        case 2:
-            selectTable(db);
-            break;
-        case 3:
-            addRecord(db);
-            break;
-        case 4:
-            printRecords(db);
-            break;
-        case 5:
-            updateRecord(db);
-            break;
-        case 6:
-            saveToFile(db);
-            break;
-        case 7:
-            loadFromFile(db);
-            break;
-        case 8:
-            printTables(db);
-            break;
-        case 9:
-            return 0;
-        default:
-            std::cerr << "Ошибка: Неверный выбор." << std::endl;
-        }
-        system("pause");
-    }
-
-    return 0;
-}
-
-```
-
-
+В методе loadFromFile, обработка данных из файла существенно переработана для более эффективного и безопасного извлечения данных. Выходные сообщения об ошибках заменены на исключения std::runtime_error. Метод теперь очищает tables перед загрузкой данных.
 
 ## Примечание
 
